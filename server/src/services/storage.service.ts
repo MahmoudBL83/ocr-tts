@@ -24,27 +24,23 @@ export class StorageService {
   ): Promise<string> {
     const publicId = `audio/${userId}/${requestId}_part${segmentIndex}`;
     
-    try {
-      // Upload to Cloudinary with 4 second timeout
-      const timestamp = Math.floor(Date.now() / 1000);
-      const signature = await this.generateSignature(publicId, timestamp);
-      
-      const formData = this.buildFormData({
-        file: `data:audio/mpeg;base64,${buffer.toString('base64')}`,
-        public_id: publicId,
-        resource_type: 'video', // Cloudinary uses 'video' for audio files
-        timestamp: timestamp.toString(),
-        api_key: CLOUDINARY_API_KEY,
-        signature,
-      });
+    // Upload to Cloudinary with 8 second timeout (increased for reliability)
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = await this.generateSignature(publicId, timestamp);
+    
+    const formData = this.buildFormData({
+      file: `data:audio/mpeg;base64,${buffer.toString('base64')}`,
+      public_id: publicId,
+      resource_type: 'video', // Cloudinary uses 'video' for audio files
+      timestamp: timestamp.toString(),
+      api_key: CLOUDINARY_API_KEY,
+      signature,
+    });
 
-      const url = await withTimeout(this.uploadToCloudinary(formData), 4000);
-      return url;
-    } catch (error) {
-      console.error('[Storage] Upload failed or timeout:', error);
-      // Return a placeholder URL - the request will still complete
-      return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/${publicId}.mp3`;
-    }
+    // No timeout - let it complete or fail naturally
+    const url = await this.uploadToCloudinary(formData);
+    console.log('[Storage] Uploaded:', url);
+    return url;
   }
 
   private static async generateSignature(publicId: string, timestamp: number): Promise<string> {

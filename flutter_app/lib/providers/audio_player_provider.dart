@@ -105,10 +105,22 @@ class AudioPlayerNotifier extends StateNotifier<AudioPlayerState> {
     if (_queue.isEmpty || _currentIndex >= _queue.length) return;
     final url = _queue[_currentIndex];
     try {
+      print('[AudioPlayer] Playing segment ${_currentIndex + 1}: $url');
       await _service.play(url);
     } catch (error) {
-      state = state.copyWith(status: AudioPlaybackStatus.error, errorMessage: error.toString());
-      _clearQueue();
+      print('[AudioPlayer] Error playing $url: $error');
+      // Try next segment if this one fails
+      if (_currentIndex < _queue.length - 1) {
+        _currentIndex++;
+        state = state.copyWith(
+          currentSegment: _currentIndex + 1,
+          status: AudioPlaybackStatus.loading,
+        );
+        _startCurrentSegment();
+      } else {
+        state = state.copyWith(status: AudioPlaybackStatus.error, errorMessage: 'Audio playback failed');
+        _clearQueue();
+      }
     }
   }
 
