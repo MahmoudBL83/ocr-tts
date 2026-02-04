@@ -17,9 +17,22 @@ class HomeScreen extends ConsumerWidget {
 
     return authState.when(
       data: (user) {
-        if (user == null) return const LoginScreenNavigate();
+        if (user == null) {
+          // User not logged in, show login screen directly
+          return const LoginScreen();
+        }
+        // User is logged in, show home content
         return Scaffold(
-          appBar: AppBar(title: const Text('Image-to-Speech')),
+          appBar: AppBar(
+            title: const Text('Image-to-Speech'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout),
+                onPressed: () => ref.read(authProvider.notifier).signOut(),
+                tooltip: 'Sign out',
+              ),
+            ],
+          ),
           body: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -69,17 +82,5 @@ class HomeScreen extends ConsumerWidget {
         );
       },
     );
-  }
-}
-
-class LoginScreenNavigate extends StatelessWidget {
-  const LoginScreenNavigate({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
-    });
-    return const SizedBox.shrink();
   }
 }
