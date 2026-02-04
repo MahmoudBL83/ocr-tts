@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../models/processing_request_model.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import '../services/image_service.dart';
 import '../services/request_service.dart';
 import '../services/storage_service.dart';
@@ -91,6 +92,18 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         imageUrl: downloadUrl,
       );
       await RequestService().createRequest(request);
+      
+      // Trigger server processing
+      setState(() {
+        _statusMessage = 'Starting OCR processing…';
+      });
+      try {
+        await ApiService().processRequest(requestId);
+      } catch (e) {
+        // Log but don't fail - request is created, server might process it later
+        debugPrint('Failed to trigger processing: $e');
+      }
+      
       if (!mounted) return;
       setState(() {
         _statusMessage = 'Request submitted! Check history for progress.';
