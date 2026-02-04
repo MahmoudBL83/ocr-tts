@@ -1,0 +1,309 @@
+openapi: 3.0.3
+info:
+  title: Image-to-Speech OCR Pipeline API
+  description: |
+    REST API for the Image-to-Speech OCR Pipeline system.
+    
+    This API is used by the Flutter mobile app to interact with the Node.js server
+    for operations that require server-side processing or cannot be done directly
+    via Firebase SDK.
+    
+    Note: Most operations use Firebase directly (Firestore, Storage, Auth).
+    This API handles:
+    - Device pairing validation
+    - Manual retry of failed requests
+    - Health checks
+  version: 1.0.0
+  contact:
+    name: OCR Pipeline Team
+
+servers:
+  - url: https://api.ocr-pipeline.example.com/v1
+    description: Production server
+  - url: http://localhost:3000/v1
+    description: Development server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: devices
+    description: Device pairing and management
+  - name: requests
+    description: Processing request operations
+  - name: health
+    description: Service health checks
+
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check endpoint
+      description: Returns service health status. No authentication required.
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy]
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /devices/pair:
+    post:
+      tags:
+        - devices
+      summary: Pair a device with the authenticated user
+      description: |
+        Links an ESP32 device to the authenticated user's account using
+        the 6-digit pairing code displayed on the device's serial output.
+        
+        A user can only have one paired device at a time. Pairing a new
+        device will unpair any previously paired device.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PairDeviceRequest'
+      responses:
+        '200':
+          description: Device paired successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairDeviceResponse'
+        '400':
+          description: Invalid pairing code format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Device with this pairing code not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Device already paired to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /devices/unpair:
+    post:
+      tags:
+        - devices
+      summary: Unpair the user's current device
+      description: |
+        Removes the pairing between the authenticated user and their
+        ESP32 device. The device will stop receiving audio for this user.
+      responses:
+        '200':
+          description: Device unpaired successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Device unpaired successfully"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: User has no paired device
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /devices/status:
+    get:
+      tags:
+        - devices
+      summary: Get the user's paired device status
+      description: |
+        Returns information about the authenticated user's paired ESP32 device,
+        including online status and last seen timestamp.
+      responses:
+        '200':
+          description: Device status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: User has no paired device
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /requests/{requestId}/retry:
+    post:
+      tags:
+        - requests
+      summary: Retry a failed processing request
+      description: |
+        Resets a request with status "error" back to "pending" so the
+        server will attempt to process it again. Only works for requests
+        owned by the authenticated user.
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the request to retry
+      responses:
+        '200':
+          description: Request queued for retry
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  request_id:
+                    type: string
+                  new_status:
+                    type: string
+                    enum: [pending]
+        '400':
+          description: Request is not in error status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Request does not belong to authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID token obtained from Firebase Auth SDK
+
+  schemas:
+    PairDeviceRequest:
+      type: object
+      required:
+        - pairing_code
+      properties:
+        pairing_code:
+          type: string
+          pattern: '^\d{6}$'
+          description: 6-digit pairing code displayed on ESP32 serial output
+          example: "123456"
+        friendly_name:
+          type: string
+          maxLength: 50
+          description: Optional user-friendly name for the device
+          example: "Living Room Speaker"
+
+    PairDeviceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        device_id:
+          type: string
+          description: The unique identifier of the paired device
+          example: "esp32-abc123def456"
+        friendly_name:
+          type: string
+          description: The device's friendly name
+          example: "Living Room Speaker"
+        paired_at:
+          type: string
+          format: date-time
+          description: When the pairing was established
+
+    DeviceStatus:
+      type: object
+      properties:
+        device_id:
+          type: string
+          example: "esp32-abc123def456"
+        friendly_name:
+          type: string
+          example: "Living Room Speaker"
+        is_online:
+          type: boolean
+          description: Whether the device is currently connected
+          example: true
+        last_seen:
+          type: string
+          format: date-time
+          description: Last time the device sent a heartbeat
+        firmware_version:
+          type: string
+          example: "1.0.0"
+        paired_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+              example: "DEVICE_NOT_FOUND"
+            message:
+              type: string
+              description: Human-readable error message
+              example: "No device found with the provided pairing code"
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: "UNAUTHORIZED"
+              message: "Invalid or expired authentication token"

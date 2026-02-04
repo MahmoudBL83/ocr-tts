@@ -1,0 +1,84 @@
+# General
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*.log
+*.log.*
+*.pid
+*.seed
+*.env*
+.vscode/
+.idea/
+*.iml
+
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-plugins-deps
+.dart_tool/
+.packages
+.pub-cache/
+build/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral
+ios/Pods/
+ios/Runner.xcworkspace/
+android/.gradle/
+android/build/
+android/app/build/
+android/key.properties
+pubspec.lock
+
+# Node / Server
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+server/logs/
+server/.next/
+
+# Firebase Emulators & CLI
+.firebase/
+defaults.json
+firebase-debug.log
+
+# ESP32 / PlatformIO
+.pio
+evenv/
+*.pioenvs/
+libdeps/
+platformio.ini
+.env
+
+# IDE / Misc
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
+# Cache / Temporary
+cache/
+.tmp/
+
+# Secrets
+service-account.json
+*-firebase-adminsdk-*.json
+google-services.json
+GoogleService-Info.plist
+
+# Generated artifacts
+*.apk
+*.aab
+*.ipa
+*.db
+
+# Misc
+*.bak
+*~
