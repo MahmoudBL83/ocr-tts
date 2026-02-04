@@ -13,7 +13,7 @@ dependencies:
   firebase_core: ^2.32.0
   firebase_auth: ^4.7.0
   cloud_firestore: ^4.7.0
-  firebase_storage: ^11.7.0
+  http: ^1.2.0
   google_sign_in: ^6.2.1
   audioplayers: ^6.0.0
   camera: ^0.11.0
