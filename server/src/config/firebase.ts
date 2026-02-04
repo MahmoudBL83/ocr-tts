@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import * as fs from 'fs';
 
 if (!admin.apps.length) {
   // For Vercel: Use JSON credentials from environment variable
@@ -10,9 +11,20 @@ if (!admin.apps.length) {
     const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
     credential = admin.credential.cert(serviceAccount);
   } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    // Local development: Use service account file path
-    const serviceAccount = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-    credential = admin.credential.cert(serviceAccount);
+    const credValue = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    
+    // Check if it's JSON content (starts with {) or a file path
+    if (credValue.trim().startsWith('{')) {
+      // It's JSON content, parse it directly
+      const serviceAccount = JSON.parse(credValue);
+      credential = admin.credential.cert(serviceAccount);
+    } else if (fs.existsSync(credValue)) {
+      // It's a file path, read and parse
+      const serviceAccount = JSON.parse(fs.readFileSync(credValue, 'utf8'));
+      credential = admin.credential.cert(serviceAccount);
+    } else {
+      throw new Error(`Cannot find credentials file: ${credValue}`);
+    }
   } else {
     // Fallback to application default credentials
     credential = admin.credential.applicationDefault();
