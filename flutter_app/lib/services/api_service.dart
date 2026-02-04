@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 /// API Service to communicate with the backend server
 class ApiService {
   // Vercel deployment URL - update if your URL is different
-  static const String baseUrl = 'https://ocr-tts-eyid.vercel.app/v1';
+  static const String baseUrl = 'https://ocr-tts.vercel.app/v1';
   
   final FirebaseAuth _auth;
 
