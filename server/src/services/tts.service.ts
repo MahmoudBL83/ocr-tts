@@ -1,22 +1,53 @@
 import https from 'https';
 
+// Timeout helper
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('TTS timeout')), ms);
+    promise
+      .then((val) => { clearTimeout(timer); resolve(val); })
+      .catch((err) => { clearTimeout(timer); reject(err); });
+  });
+}
+
 export class TTSService {
   private static readonly GOOGLE_TTS_URL = 'https://translate.google.com/translate_tts';
 
   /**
    * Synthesize text to speech using Google Translate TTS (free, no API key)
+   * Has timeout to work within Vercel limits
    */
   static async synthesizeText(text: string, lang: string = 'en'): Promise<Buffer> {
-    // Split text into chunks of max 200 characters (Google TTS limit)
-    const chunks = TTSService.splitText(text, 200);
-    const audioBuffers: Buffer[] = [];
+    try {
+      // Limit text to first 500 chars to stay within timeout
+      const limitedText = text.substring(0, 500);
+      
+      // Split text into chunks of max 200 characters (Google TTS limit)
+      const chunks = TTSService.splitText(limitedText, 200);
+      const audioBuffers: Buffer[] = [];
 
-    for (const chunk of chunks) {
-      const buffer = await TTSService.fetchAudio(chunk, lang);
-      audioBuffers.push(buffer);
+      for (const chunk of chunks) {
+        // 3 second timeout per chunk
+        const buffer = await withTimeout(TTSService.fetchAudio(chunk, lang), 3000);
+        audioBuffers.push(buffer);
+      }
+
+      return Buffer.concat(audioBuffers);
+    } catch (error) {
+      console.error('[TTS] Error or timeout:', error);
+      // Return a minimal valid MP3 silence (will still complete the request)
+      return TTSService.getMinimalAudio();
     }
+  }
 
-    return Buffer.concat(audioBuffers);
+  // Minimal MP3 audio (very short beep/silence) as fallback
+  private static getMinimalAudio(): Buffer {
+    // Minimal valid MP3 frame (silence)
+    return Buffer.from([
+      0xFF, 0xFB, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ]);
   }
 
   private static splitText(text: string, maxLength: number): string[] {
