@@ -1,4 +1,7 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+// Load .env but don't override existing env vars (Vercel sets them)
+dotenv.config({ override: false });
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
